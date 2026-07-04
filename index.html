@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Todo管理</title>
+
+<style>
+body{
+    font-family:sans-serif;
+    background:#f5f5f4;
+    margin:20px;
+    color:#333;
+    zoom:0.9;
+    transform-origin:top left;
+}
+.container{
+    width:calc(100vw - 60px);
+    max-width:1800px;
+    min-width:800px;
+    margin:0;
+}
+input,select,button,textarea{
+    padding:8px;
+    font-size:14px;
+    border:1px solid #d6d3d1;
+    border-radius:6px;
+}
+input[type="checkbox"]{
+    accent-color:#8b8b8b;
+}
+button{
+    cursor:pointer;
+    background:#fff;
+}
+.add-button{
+    width:40px;
+    font-weight:bold;
+}
+ul{
+    list-style:none;
+    padding-left:0;
+    margin:0;
+}
+.project-bar{
+    display:flex;
+    gap:8px;
+    margin-bottom:12px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+.todo-row{
+    position:relative;
+    display:flex;
+    align-items:stretch;
+}
+.move-hover-zone{
+    width:28px;
+    min-width:28px;
+    flex-shrink:0;
+    align-self:stretch;
+}
+.todo-item{
+    flex:1;
+    position:relative;
+    background:white;
+    margin:6px 0;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #e7e5e4;
+    min-width:0;
+}
+.move-controls{
+    position:absolute;
+    left:-24px;
+    top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    opacity:0;
+    visibility:hidden;
+    transition:.15s;
+    z-index:3;
+}
+.move-hover-zone:hover + .todo-item .move-controls{
+    opacity:1;
+    visibility:visible;
+}
+.todo-item .move-controls:hover{
+    opacity:1;
+    visibility:visible;
+}
+.move-controls button{
+    width:22px;
+    height:18px;
+    padding:0;
+    font-size:10px;
+}
+.todo-header{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-wrap:nowrap;
+    position:relative;
+}
+.toggle-space{
+    width:18px;
+    min-width:18px;
+    height:18px;
+    line-height:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    flex-shrink:0;
+}
+
+.todo-header input[type="checkbox"]{
+    flex-shrink:0;
+}
+
+.task-name{
+    font-size:15px;
+    font-weight:600;
+    white-space:nowrap;
+    flex-shrink:0;
+    display:inline-block;
+    border:none;
+    background:transparent;
+    padding:0;
+    max-width:400px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.task-name:focus{
+    outline:none;
+    border-bottom:1px solid #aaa;
+}
+.completed{
+    text-decoration:line-through;
+    opacity:.45;
+}
+.priority{
+    font-size:11px;
+    padding:4px 10px;
+    border-radius:999px;
+    font-weight:bold;
+    white-space:nowrap;
+    flex-shrink:0;
+
+    border:none;
+    outline:none;
+    cursor:pointer;
+    appearance:none;
+    background-position:right 6px center;
+}
+.priority-urgent{background:#e7bcbc;}
+.priority-priority{background:#e6c6aa;}
+.priority-normal{background:#e7dcc8;}
+.priority-free{background:#cdddc4;}
+.priority-hold{background:#d8dadd;}
+.priority-done{background:#bfc7d5;}
+
+.todo-buttons{
+    display:flex;
+    gap:4px;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+    align-items:center;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    position:absolute;
+    left:0;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+.todo-item > .todo-header:hover .todo-buttons{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+}
+
+.todo-item > .todo-header:hover .memo-inline .memo-text{
+    opacity:0;
+}
+
+.todo-buttons button{
+    font-size:10px;
+    padding:3px 6px;
+    flex-shrink:0;
+}
+
+.date-inline{
+    font-size:12px;
+    color:#777;
+    white-space:nowrap;
+    flex-shrink:0;
+}
+
+.memo-text{
+    display:block;
+    transition:.15s;
+}
+
+.memo-inline,.date-inline{
+    font-size:12px;
+    color:#777;
+    white-space:nowrap;
+}
+.memo-inline{
+    position:relative;
+    font-style:italic;
+    white-space:nowrap;
+    overflow:visible;
+    text-overflow:ellipsis;
+    min-width:140px;
+    flex:1 1 auto;
+}
+.tag-chip{
+    border:1px solid #ddd;
+    border-radius:999px;
+    padding:2px 8px;
+    font-size:11px;
+    background:#fafafa;
+    white-space:nowrap;
+    flex-shrink:0;
+}
+.settings-wrapper{
+    position:fixed;
+    top:20px;
+    right:20px;
+    z-index:9999;
+}
+.settings-panel{
+    display:none;
+    position:absolute;
+    top:40px;
+    right:0;
+    background:white;
+    border:1px solid #ddd;
+    padding:16px;
+    border-radius:8px;
+    flex-direction:row;
+    gap:24px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+.setting-block{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-width:120px;
+}
+.edit-area{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.inline-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+.child-wrap{
+    margin-left:26px;
+}
+.group-title{
+    margin:10px 0 4px;
+    font-weight:bold;
+    font-size:12px;
+    color:#666;
+    cursor:pointer;
+    padding:2px 0;
+}
+.memo-row{
+    width:100%;
+}
+.memo-row textarea{
+    width:100%;
+    min-height:80px;
+    resize:vertical;
+    box-sizing:border-box;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Todo管理</h1>
+
+<div class="project-bar">
+    <select id="projectSelect"></select>
+    <button id="projectRenameBtn">プロジェクト名変更</button>
+    <button id="projectDeleteBtn">削除</button>
+    <button id="exportBtn">書き出し</button>
+    <button id="importBtn">復元</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+    <div style="width:24px;"></div>
+    <input type="text" id="projectInput" placeholder="プロジェクト名を入力">
+    <button id="projectAddBtn" class="add-button">＋</button>
+</div>
+
+<div>
+    <input type="text" id="taskInput" placeholder="タスク名を入力">
+    <select id="priorityInput">
+        <option>緊急</option>
+        <option>優先</option>
+        <option selected>通常</option>
+        <option>手隙</option>
+        <option>保留</option>
+        <option>完了</option>
+    </select>
+    <button id="addBtn" class="add-button">＋</button>
+</div>
+
+<div class="settings-wrapper">
+    <button id="settingsToggle">⚙ 表示設定 ▼</button>
+    <div id="settingsPanel" class="settings-panel">
+        <div class="setting-block">
+            <label><input type="checkbox" id="showCompleted" checked> 完了済み表示</label>
+        </div>
+        <div class="setting-block">
+            <div>グループ化</div>
+            <select id="groupMode">
+                <option value="none">なし</option>
+                <option value="priority">優先度</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div id="todoList"></div>
+
+<script>
+const taskInput=document.getElementById("taskInput");
+const priorityInput=document.getElementById("priorityInput");
+const addBtn=document.getElementById("addBtn");
+const todoList=document.getElementById("todoList");
+const settingsToggle=document.getElementById("settingsToggle");
+const settingsPanel=document.getElementById("settingsPanel");
+const showCompleted=document.getElementById("showCompleted");
+const groupMode=document.getElementById("groupMode");
+
+const projectInput=document.getElementById("projectInput");
+const projectAddBtn=document.getElementById("projectAddBtn");
+const projectRenameBtn=document.getElementById("projectRenameBtn");
+const projectDeleteBtn=document.getElementById("projectDeleteBtn");
+const projectSelect=document.getElementById("projectSelect");
+
+const exportBtn=document.getElementById("exportBtn");
+const importBtn=document.getElementById("importBtn");
+const importFile=document.getElementById("importFile");
+
+let currentProject=localStorage.getItem("currentProject")||"default";
+let projects=JSON.parse(localStorage.getItem("projects"))||["default"];
+
+if(!projects.includes(currentProject)) projects.push(currentProject);
+
+function key(project,name){
+    return `${project}_${name}`;
+}
+
+let todos=JSON.parse(localStorage.getItem(key(currentProject,"todos")))||[];
+let groupCollapsed=JSON.parse(localStorage.getItem(key(currentProject,"groupCollapsed")))||{};
+
+showCompleted.checked=JSON.parse(localStorage.getItem(key(currentProject,"showCompleted")) ?? "true");
+groupMode.value=localStorage.getItem(key(currentProject,"groupMode")) || "none";
+
+function saveTodos(){ localStorage.setItem(key(currentProject,"todos"),JSON.stringify(todos)); }
+function saveSettings(){
+    localStorage.setItem(key(currentProject,"showCompleted"),showCompleted.checked);
+    localStorage.setItem(key(currentProject,"groupMode"),groupMode.value);
+}
+function saveGroupState(){
+    localStorage.setItem(key(currentProject,"groupCollapsed"),JSON.stringify(groupCollapsed));
+}
+function saveProjects(){
+    localStorage.setItem("projects",JSON.stringify(projects));
+}
+
+function renderProjects(){
+    projectSelect.innerHTML=projects.map(p =>
+        `<option value="${p}" ${p===currentProject?"selected":""}>${p}</option>`
+    ).join("");
+}
+
+function switchProject(name){
+    currentProject=name;
+    localStorage.setItem("currentProject",name);
+
+    todos=JSON.parse(localStorage.getItem(key(currentProject,"todos")))||[];
+    groupCollapsed=JSON.parse(localStorage.getItem(key(currentProject,"groupCollapsed")))||{};
+
+    showCompleted.checked=JSON.parse(localStorage.getItem(key(currentProject,"showCompleted")) ?? "true");
+    groupMode.value=localStorage.getItem(key(currentProject,"groupMode")) || "none";
+
+    renderProjects();
+    render();
+}
+
+function getPriorityClass(priority){
+    return {
+        "緊急":"priority-urgent",
+        "優先":"priority-priority",
+        "通常":"priority-normal",
+        "手隙":"priority-free",
+        "保留":"priority-hold",
+        "完了":"priority-done"
+    }[priority] || "priority-normal";
+}
+
+function createDateText(task){
+    if(!task.date) return "";
+    if(task.allDay) return task.date+" 終日";
+
+    let timeText="";
+    if(task.startTime) timeText+=task.startTime;
+    if(task.endTime) timeText+=(timeText?" ":"")+task.endTime;
+
+    return `${task.date}${timeText ? " " + timeText : ""}`;
+}
+
+function createRemainingText(task){
+    if(!task.date) return "";
+
+    const today=new Date();
+    today.setHours(0,0,0,0);
+
+    const target=new Date(task.date);
+    target.setHours(0,0,0,0);
+
+    const diff=Math.floor((target-today)/(1000*60*60*24));
+
+    if(diff===0) return "今日";
+    if(diff>0) return `あと${diff}日`;
+    return `${Math.abs(diff)}日経過`;
+}
+
+function findTask(id,list){
+    for(const t of list){
+        if(t.id===id) return t;
+        const found=findTask(id,t.children||[]);
+        if(found) return found;
+    }
+    return null;
+}
+
+function addTask(parentId=null){
+    const text=parentId ? "" : taskInput.value.trim();
+    if(!parentId && !text) return;
+
+    const task={
+        id:Date.now(),
+        text,
+        priority:parentId?"通常":priorityInput.value,
+        date:"",
+        startTime:"",
+        endTime:"",
+        allDay:false,
+        tags:[],
+        memo:"",
+        completed:false,
+        collapsed:false,
+        editing:false,
+        children:[]
+    };
+
+    if(parentId){
+    findTask(parentId,todos).children.unshift(task);
+}else{
+    todos.unshift(task);
+}
+
+    taskInput.value="";
+    saveTodos();
+    render();
+}
+
+function updateTaskName(id, value){
+    const task=findTask(id,todos);
+    if(!task) return;
+
+    task.text=value.trim();
+    saveTodos();
+    render();
+}
+
+function updatePriority(id, value){
+    const task=findTask(id,todos);
+    if(!task) return;
+
+    task.priority=value;
+    saveTodos();
+    render();
+}
+
+function updateTask(id){
+    const task=findTask(id,todos);
+
+    task.priority=document.getElementById(`edit-priority-${id}`).value;
+    task.date=document.getElementById(`edit-date-${id}`).value;
+    task.startTime=document.getElementById(`edit-start-${id}`).value;
+    task.endTime=document.getElementById(`edit-end-${id}`).value;
+    task.allDay=document.getElementById(`edit-allday-${id}`).checked;
+    task.memo=document.getElementById(`edit-memo-${id}`).value;
+    task.tags=document.getElementById(`edit-tags-${id}`).value.split(",").map(v=>v.trim()).filter(Boolean);
+
+    saveTodos();
+    render();
+}
+
+function saveField(id, field, value){
+    const task=findTask(id,todos);
+    if(!task) return;
+
+    if(field==="tags"){
+        task.tags=value.split(",").map(v=>v.trim()).filter(Boolean);
+    }else{
+        task[field]=value;
+    }
+
+    saveTodos();
+}
+
+function moveTask(id,direction,list=todos){
+    for(let i=0;i<list.length;i++){
+        if(list[i].id===id){
+            const target=i+direction;
+            if(target<0||target>=list.length)return true;
+            [list[i],list[target]]=[list[target],list[i]];
+            saveTodos();
+            render();
+            return true;
+        }
+        if(moveTask(id,direction,list[i].children||[])) return true;
+    }
+}
+
+function indentTask(id,list=todos){
+    for(let i=0;i<list.length;i++){
+        if(list[i].id===id){
+            if(i===0)return true;
+
+            const task=list.splice(i,1)[0];
+            list[i-1].children.push(task);
+
+            saveTodos();
+            render();
+            return true;
+        }
+        if(indentTask(id,list[i].children||[])) return true;
+    }
+}
+
+function outdentTask(id,list=todos,parentList=null,parentIndex=null){
+    for(let i=0;i<list.length;i++){
+        if(list[i].id===id){
+            if(!parentList)return true;
+
+            const task=list.splice(i,1)[0];
+            parentList.splice(parentIndex+1,0,task);
+
+            saveTodos();
+            render();
+            return true;
+        }
+
+        if(outdentTask(id,list[i].children||[],list,i)) return true;
+    }
+}
+
+function toggleComplete(id){
+    const task=findTask(id,todos);
+    task.completed=!task.completed;
+    saveTodos();
+    render();
+}
+
+function toggleCollapse(id){
+    const task=findTask(id,todos);
+    task.collapsed=!task.collapsed;
+    saveTodos();
+    render();
+}
+
+function toggleEdit(id){
+    const task=findTask(id,todos);
+    task.editing=!task.editing;
+    saveTodos();
+    render();
+}
+
+function deleteTask(id,list=todos){
+    for(let i=0;i<list.length;i++){
+        if(list[i].id===id){
+            if(confirm("削除しますか？")){
+                list.splice(i,1);
+                saveTodos();
+                render();
+            }
+            return true;
+        }
+        if(deleteTask(id,list[i].children||[])) return true;
+    }
+}
+
+function toggleGroup(priority){
+    groupCollapsed[priority]=!groupCollapsed[priority];
+    saveGroupState();
+    render();
+}
+
+function getVisibleTodos(list){
+    return showCompleted.checked ? list : list.filter(t=>!t.completed);
+}
+
+function createHTML(task){
+    const visibleChildren=getVisibleTodos(task.children||[]);
+
+    return `
+    <li class="todo-row">
+        <div class="move-hover-zone"></div>
+        <div class="todo-item">
+
+            <div class="todo-header">
+                <span class="toggle-space"
+                    onclick="${visibleChildren.length ? `toggleCollapse(${task.id})` : ""}">
+                    ${visibleChildren.length ? (task.collapsed ? "▶":"▼") : ""}
+                </span>
+
+                <input type="checkbox" ${task.completed?"checked":""}
+                    onchange="toggleComplete(${task.id})">
+
+                <select
+    class="priority ${getPriorityClass(task.priority)}"
+    onchange="updatePriority(${task.id}, this.value)"
+>
+    <option value="緊急" ${task.priority==="緊急"?"selected":""}>緊急</option>
+    <option value="優先" ${task.priority==="優先"?"selected":""}>優先</option>
+    <option value="通常" ${task.priority==="通常"?"selected":""}>通常</option>
+    <option value="手隙" ${task.priority==="手隙"?"selected":""}>手隙</option>
+    <option value="保留" ${task.priority==="保留"?"selected":""}>保留</option>
+    <option value="完了" ${task.priority==="完了"?"selected":""}>完了</option>
+</select>
+
+                <span
+    class="task-name ${task.completed ? "completed":""}"
+    contenteditable="true"
+    onblur="updateTaskName(${task.id}, this.innerText)"
+>
+    ${task.text || "(未入力)"}
+</span>
+
+                ${(task.tags||[]).map(tag=>`<span class="tag-chip">${tag}</span>`).join("")}
+
+                ${task.date ? `<span class="date-inline">${createDateText(task)} （${createRemainingText(task)}）</span>` : ""}
+                <span class="memo-inline">
+    <span class="memo-text">${task.memo || ""}</span>
+
+    <div class="todo-buttons">
+        <button class="add-button" onclick="addTask(${task.id})">＋</button>
+        <button onclick="toggleEdit(${task.id})">編集</button>
+        <button onclick="deleteTask(${task.id})">削除</button>
+        <button onclick="outdentTask(${task.id})">◀</button>
+        <button onclick="indentTask(${task.id})">▶</button>
+    </div>
+</span>
+            </div>
+
+            <div class="move-controls">
+                <button onclick="moveTask(${task.id},-1)">▲</button>
+                <button onclick="moveTask(${task.id},1)">▼</button>
+            </div>
+
+${task.editing ? `
+<div class="edit-area">
+
+    <div class="inline-row">
+
+        <div class="inline-row">
+            <select id="edit-priority-${task.id}" onchange="updateTask(${task.id})">
+                <option ${task.priority==="緊急"?"selected":""}>緊急</option>
+                <option ${task.priority==="優先"?"selected":""}>優先</option>
+                <option ${task.priority==="通常"?"selected":""}>通常</option>
+                <option ${task.priority==="手隙"?"selected":""}>手隙</option>
+                <option ${task.priority==="保留"?"selected":""}>保留</option>
+                <option ${task.priority==="完了"?"selected":""}>完了</option>
+            </select>
+
+            <input type="date" id="edit-date-${task.id}" value="${task.date}" onchange="updateTask(${task.id})">
+            <input type="time" id="edit-start-${task.id}" value="${task.startTime}" onchange="updateTask(${task.id})">
+            <input type="time" id="edit-end-${task.id}" value="${task.endTime}" onchange="updateTask(${task.id})">
+
+            <label>
+                <input type="checkbox" id="edit-allday-${task.id}" ${task.allDay?"checked":""} onchange="updateTask(${task.id})">
+                終日
+            </label>
+        </div>
+
+        <input
+            id="edit-tags-${task.id}"
+            value="${(task.tags||[]).join(",")}"
+            placeholder="タグ（カンマ区切り）"
+            oninput="saveField(${task.id}, 'tags', this.value)"
+        >
+    </div>
+
+    <div class="memo-row">
+        <textarea
+            id="edit-memo-${task.id}"
+            placeholder="メモ"
+            oninput="saveField(${task.id}, 'memo', this.value)"
+        >${task.memo}</textarea>
+    </div>
+
+</div>
+` : ""}
+
+            ${visibleChildren.length && !task.collapsed
+                ? `<div class="child-wrap"><ul>${visibleChildren.map(createHTML).join("")}</ul></div>`
+                : ""}
+        </div>
+    </li>`;
+}
+
+function render(){
+    const visible=getVisibleTodos(todos);
+
+    if(groupMode.value==="none"){
+        todoList.innerHTML=`<ul>${visible.map(createHTML).join("")}</ul>`;
+        return;
+    }
+
+    const order=["緊急","優先","通常","手隙","保留","完了"];
+    let html="";
+
+    order.forEach(priority=>{
+        const group=visible.filter(t=>t.priority===priority);
+        if(group.length){
+            const collapsed=groupCollapsed[priority];
+
+            html+=`
+                <div class="group-title" onclick="toggleGroup('${priority}')">
+                    ${collapsed ? "▶" : "▼"} ${priority}
+                </div>
+            `;
+
+            if(!collapsed){
+                html+=`<ul>${group.map(createHTML).join("")}</ul>`;
+            }
+        }
+    });
+
+    todoList.innerHTML=html;
+}
+
+settingsToggle.onclick=()=> {
+    settingsPanel.style.display =
+        settingsPanel.style.display==="flex" ? "none" : "flex";
+};
+
+showCompleted.onchange=()=>{ saveSettings(); render(); };
+groupMode.onchange=()=>{ saveSettings(); render(); };
+addBtn.onclick=()=>addTask();
+
+projectAddBtn.onclick=()=>{
+    const name=projectInput.value.trim();
+    if(!name)return;
+    if(!projects.includes(name)){
+        projects.push(name);
+        saveProjects();
+    }
+    projectInput.value="";
+    renderProjects();
+};
+
+projectRenameBtn.onclick=()=>{
+    const old=currentProject;
+    const name=prompt("新しいプロジェクト名",old);
+
+    if(!name || name===old || projects.includes(name)) return;
+
+    ["todos","groupCollapsed","showCompleted","groupMode"].forEach(k=>{
+        const oldKey=key(old,k);
+        const newKey=key(name,k);
+
+        const value=localStorage.getItem(oldKey);
+        if(value!==null){
+            localStorage.setItem(newKey,value);
+            localStorage.removeItem(oldKey);
+        }
+    });
+
+    projects=projects.map(p=>p===old ? name : p);
+    currentProject=name;
+
+    saveProjects();
+    localStorage.setItem("currentProject",name);
+
+    renderProjects();
+    render();
+};
+
+projectDeleteBtn.onclick=()=>{
+    if(projects.length<=1){
+        alert("最後のプロジェクトは削除できません");
+        return;
+    }
+
+    if(!confirm(`「${currentProject}」を削除しますか？`)) return;
+
+    ["todos","groupCollapsed","showCompleted","groupMode"].forEach(k=>{
+        localStorage.removeItem(key(currentProject,k));
+    });
+
+    projects=projects.filter(p=>p!==currentProject);
+    saveProjects();
+
+    switchProject(projects[0]);
+};
+
+function exportData(){
+    const data={
+        project:currentProject,
+        todos,
+        showCompleted:showCompleted.checked,
+        groupMode:groupMode.value,
+        groupCollapsed
+    };
+
+    const blob=new Blob(
+        [JSON.stringify(data,null,2)],
+        {type:"application/json"}
+    );
+
+    const a=document.createElement("a");
+    const url=URL.createObjectURL(blob);
+
+    const d=new Date();
+    const fileDate=
+        d.getFullYear()+
+        String(d.getMonth()+1).padStart(2,"0")+
+        String(d.getDate()).padStart(2,"0");
+
+    a.href=url;
+    a.download=`Todo_backup_${currentProject}_${fileDate}.json`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+function importData(file){
+    const reader=new FileReader();
+
+    reader.onload=(e)=>{
+        try{
+            const data=JSON.parse(e.target.result);
+
+            if(!data.project){
+                alert("プロジェクト情報がありません");
+                return;
+            }
+
+            const targetProject=data.project;
+
+            if(projects.includes(targetProject)){
+                const ok=confirm(`「${targetProject}」に上書き復元しますか？`);
+                if(!ok)return;
+            }else{
+                projects.push(targetProject);
+                saveProjects();
+            }
+
+            localStorage.setItem(key(targetProject,"todos"),JSON.stringify(data.todos || []));
+            localStorage.setItem(key(targetProject,"groupCollapsed"),JSON.stringify(data.groupCollapsed || {}));
+            localStorage.setItem(key(targetProject,"showCompleted"),JSON.stringify(data.showCompleted ?? true));
+            localStorage.setItem(key(targetProject,"groupMode"),data.groupMode || "none");
+
+            switchProject(targetProject);
+
+            alert("復元完了");
+
+        }catch{
+            alert("復元失敗：JSON形式が不正です");
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+exportBtn.onclick=()=>exportData();
+
+importBtn.onclick=()=>importFile.click();
+
+importFile.onchange=(e)=>{
+    const file=e.target.files[0];
+    if(file){
+        importData(file);
+    }
+};
+
+projectSelect.onchange=()=>switchProject(projectSelect.value);
+
+renderProjects();
+render();
+</script>
+
+</body>
+</html>
